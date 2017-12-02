@@ -1,0 +1,75 @@
+;*******************************************************************************
+;Proyecto de controlador de Molino
+;Brayhan Gabriel
+;gbrayhan@gmail.com
+
+;*******************************************************************************
+#include  "msp430g2231.h"
+;-------------------------------------------------------------------------------
+            NAME    main                    ; module name
+            PUBLIC  main                    ; make the main label vissible
+
+            ORG     0F800h                  ; Program Reset
+;-------------------------------------------------------------------------------
+RESET       MOV     #0240h, SP              ; set up stack
+main:	    MOV.W   #WDTPW+WDTHOLD,&WDTCTL  ; Stop watchdog timer
+
+            mov.b   &CALBC1_1MHZ,&BCSCTL1
+            mov.b   &CALDCO_1MHZ,&DCOCTL
+;-------------------------------------------------------------------------------
+P1BIOS      CLR.B &P1SEL
+            MOV.B #11111101B,&P1DIR
+            ;MOV.B #BIT1,P1OUT
+            ;MOV.B #BIT1,P1REN
+	    MOV.B #BIT1,P1IES
+            CLR.B &P1IFG
+            MOV.B #BIT1,P1IE
+            CLR.B &P1OUT
+;-------------------------------------------------------------------------------
+P2BIOS      CLR.B &P2SEL
+            MOV.B #0FFh,&P2DIR
+            CLR.B &P2OUT
+;-------------------------------------------------------------------------------
+
+					
+Mainloop    MOV.B #GIE + CPUOFF,SR
+            nop                             ; Required only for debugger
+                                            ;
+;-------------------------------------------------------------------------------
+
+BOTON       BIS.B #BIT0,&P1OUT
+            CALL #T5Seg
+            CALL #T5Seg
+            BIC.B #BIT0,&P1OUT
+            CALL #T5Seg
+    
+            BIC.B #BIT0 + BIT1,&P1IFG
+            RETI
+        
+;-------------------------------------------------------------------------------
+
+T30ms      MOV #30000,&TACCR0
+           MOV #TASSEL_2+MC_1,&TACTL    
+           
+OTRO       BIT #TAIFG,&TACTL
+           JZ OTRO
+           MOV #TACLR,&TACTL
+           RET
+;-------------------------------------------------------------------------------
+T5Seg     MOV #166,R7
+OTRA       CALL #T30ms
+           DEC R7
+           JNZ OTRA
+           RET
+                                         
+;-------------------------------------------------------------------------------
+;           Interrupt Vectors
+;-------------------------------------------------------------------------------
+            ORG     0FFFEh                  ; MSP430 RESET Vector
+            DW      RESET                   ;
+          
+            ORG 0FFE4H
+            DW BOTON 
+
+            END main
+            END
